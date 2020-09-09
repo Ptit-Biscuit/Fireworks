@@ -1,24 +1,12 @@
 import org.openrndr.application
 import org.openrndr.color.ColorHSVa
-import org.openrndr.draw.Drawer
 import org.openrndr.math.Vector2
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-class Firework(var pos: Vector2, var vel: Vector2, var fuse: Double, var color: ColorHSVa, val explode: Boolean = false) {
-    fun update(drawer: Drawer, time: Double) {
-        if (fuse > .0) {
-            drawer.stroke = this.color.toRGBa()
-
-            drawer.circle(this.pos, 2.0)
-
-            pos += this.vel
-            fuse -= time
-        }
-    }
-}
+data class Firework(var pos: Vector2, var vel: Vector2, var fuse: Double, val color: ColorHSVa, val explode: Boolean = false)
 
 fun main() = application {
     configure {
@@ -28,42 +16,39 @@ fun main() = application {
 
     program {
         val fireworks = mutableListOf<Firework>()
-        val delay = 1.0
-        var time = .0
+        val fragCount = 50
+        val theta = 2.0 * PI / fragCount
+        var delay = 1.0
 
         extend {
-            time += seconds
+            if (seconds > delay) {
+                delay += .2
 
-            if (time > delay) {
-                time -= delay
-
-                fireworks.add(
-                        Firework(
-                                Vector2(width / 2.0, height.toDouble()),
-                                Vector2(Random.nextDouble(-10.0, 10.0), -Random.nextDouble(10.0, 15.0)),
-                                Random.nextDouble(.6, .8),
-                                ColorHSVa(Random.nextDouble(.0, 360.1), .5, 1.0),
-                                true
-                        )
+                fireworks += Firework(
+                        Vector2(width / 2.0, height.toDouble()),
+                        Vector2(Random.nextDouble(-10.0, 10.0), -Random.nextDouble(10.0, 13.0)),
+                        Random.nextDouble(.6, .8),
+                        ColorHSVa(Random.nextDouble(360.1), .5, 1.0),
+                        true
                 )
+            }
 
-                (0 until fireworks.size).forEach {
-                    val f = fireworks[it]
-                    f.update(drawer, deltaTime)
+            (0 until fireworks.size).forEach {
+                val f = fireworks[it]
+                drawer.stroke = f.color.toRGBa()
+                drawer.circle(f.pos, 2.0)
 
-                    if (f.fuse < .0 && f.explode) {
-                        val theta = 2.0 * PI / 50
+                f.pos += f.vel
+                f.fuse -= deltaTime
 
-                        (0..50).forEach { frag ->
-                            fireworks.add(
-                                    Firework(
-                                            f.pos,
-                                            Vector2(cos(theta * frag), sin(theta * frag)) * 2.0,
-                                            Random.nextDouble(.4, .6),
-                                            f.color
-                                    )
-                            )
-                        }
+                if (f.fuse < .0 && f.explode) {
+                    (0..fragCount).forEach { frag ->
+                        fireworks += Firework(
+                                f.pos,
+                                Vector2(cos(theta * frag), sin(theta * frag)) * 2.0,
+                                Random.nextDouble(.4, .6),
+                                f.color.shiftHue(Random.nextDouble(-25.0, 25.0))
+                        )
                     }
                 }
             }
